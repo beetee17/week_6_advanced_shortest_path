@@ -6,147 +6,35 @@ from queue import Queue
 import math
 import heapq
 
-KEY = 1
-
-class Heap():
-
-    def __init__(self, data, size, key=None):
-        self.data = data
-        self.size = size
-        self.swaps = []
-        self.key = key
-
-        if self.key:
-           self.data = [(item, key(item)) for item in self.data]
-    
-    
-    # for zero-based indexing
-    # left_child of node[i] = 2i + 1
-    # right child of node[i] = 2i + 2
-    # parent of node[i] = round_up(i/2) - 1
-
-    def get_parent(self, i):
-        index = math.ceil(i/2) - 1
-        return index if index > 0 and index < self.size else i
-
-    def get_left_child(self, i):
-        index = 2*i + 1
-        return index if index < self.size else i
-
-    def get_right_child(self, i):
-        index = 2*i + 2
-        return index if index < self.size else i
-
-    def swap(self, i, j):
-        self.data[i], self.data[j] = self.data[j], self.data[i]
-        self.swaps.append((i, j))
-
-    def sift_down(self, i):
-        # to sift a node down in min heap, check that it is strictly greater than any of its children. 
-        # If both are >, swap it with the greater of the 2 children
-        # If one of them are >, swap with that child
-        # If neither are >, do nothing
-
-
-        left_child_i = self.get_left_child(i)
-        right_child_i = self.get_right_child(i)
-
-        if self.key:
-
-            global KEY
-    
-            node = self.data[i][KEY]
-            left_child = self.data[left_child_i][KEY]
-            right_child = self.data[right_child_i][KEY]
-
-        else:
-            node = self.data[i]
-            left_child = self.data[left_child_i]
-            right_child = self.data[right_child_i]
-
-        if node > left_child and node > right_child:
-
-            if left_child <= right_child:
-                j =  left_child_i
-
-            else:
-                j = right_child_i
-
-            self.swap(i, j)
-            self.sift_down(j)
-        
-        elif node > left_child:
-            j = left_child_i
-            self.swap(i, j)
-            self.sift_down(j)
-        
-        elif node > right_child:
-            j = right_child_i
-            self.swap(i, j)
-            self.sift_down(j)
-
-    
-    # to build a min heap from an array, sift down all nodes from the top to second-last layer (nodes i = n/2 to 1, n = len(array))
-    def build_heap(self):
-        for i in range(self.size//2, -1, -1):
-            self.sift_down(i)
-
-    def build_heap_inf(self, s):
-        self.swap(0, s)
-
-    
-    def insert(self, element):
-        if self.key:
-            self.data = [(element, self.key(element))] + self.data
-        else:
-            self.data = [element] + self.data
-
-        self.sift_down(0)
-        self.size += 1
-
-    def extractMin(self):
-
-        if self.key:
-       
-            min_item = self.data[0][0]
-
-        else:
-
-            min_item = self.data[0]
-
-        self.data = self.data[1:]
-        self.size -= 1
-
-        if self.size > 0:
-            self.sift_down(0)
-
-        return min_item
-
-    def isEmpty(self):
-        return self.size == 0
+def swap(arr, i, j):
+    arr[i], arr[j] = arr[j], arr[i]
+    return arr
 
 class Vertex():
-    def __init__(self, index):
+    def __init__(self, index, dist=math.inf):
         self.index = index
 
         # for computing of shortest path
-        self.dist = math.inf
+        self.dist = dist
 
         # for computing layer of vertex in tree and retracing shortest path  
         self.prev = None
+
+    def __lt__(self, other):
+        return self.dist < other.dist
 
     def reset(self):
         self.__init__(self.index)
 
 
 class Graph():
-    def __init__(self, n, edges):
+    def __init__(self, vertices, edges, adj):
         
-        self.vertices = [Vertex(i) for i in range(n)]
-        
+        self.vertices = vertices
+
         self.edges = edges
 
-        self.adj = defaultdict(list)
+        self.adj = adj
 
         self.last_processed = None
 
@@ -154,12 +42,11 @@ class Graph():
 
         self.search_fin = False
 
-        self.heap = None
+        self.heap = self.vertices[:]
         
-        
-        for ((u, v), w) in edges:
 
-            self.adj[self.vertices[u-1]].append((self.vertices[v-1], w))
+    def reset(self):
+        return self.__init__(self.vertices, self.edges, self.adj)
 
 
 
@@ -170,7 +57,7 @@ class Graph():
         # stop iterating once all vertices are of known distances
         if len(self.known_region) < len(self.vertices):
 
-            u = self.heap.extractMin()
+            u = heapq.heappop(self.heap)
         
             self.last_processed = u
 
@@ -186,7 +73,9 @@ class Graph():
                     # for backtracing of shortest path
                     v.prev = u
 
-                    self.heap.insert(v)
+                    heapq.heappush(self.heap, v)
+
+                    heapq.heapify(self.heap)
         else:
 
             self.search_fin = True
@@ -198,28 +87,30 @@ class BiDijkstra():
         self.graph = graph
         self.reverse_graph = reverse_graph
 
-    def reset(self):
+    def reset(self, s, t):
+        
+
+        self.graph.reset()
+        self.reverse_graph.reset()
+
+        # self.graph.vertices[s].dist = 0
+        # self.reverse_graph.vertices[t].dist = 0
+
         for v in self.graph.vertices:
-            v.dist = math.inf
+            if v.index == s:
+                v.dist = 0
+            else:
+                v.dist = math.inf
 
         for v in self.reverse_graph.vertices:
-            v.dist = math.inf
+            if v.index == t:
+                v.dist = 0
+            else:
+                v.dist = math.inf
 
-        self.reverse_graph.last_processed = None
+        self.graph.heap = swap(self.graph.heap, s, 0)
+        self.reverse_graph.heap = swap(self.reverse_graph.heap, t, 0)
 
-        self.reverse_graph.known_region = []
-
-        self.reverse_graph.search_fin = False
-
-        self.reverse_graph.heap = None
-        
-        self.graph.last_processed = None
-
-        self.graph.known_region = []
-
-        self.graph.search_fin = False
-
-        self.graph.heap = None
 
 
     def get_shortest_path(self, s, t):
@@ -228,20 +119,10 @@ class BiDijkstra():
         if s == t:
             return 0
         
-        self.reset()
+        self.reset(s, t)
 
-        self.graph.vertices[s].dist = 0
-        self.reverse_graph.vertices[t].dist = 0
-
-        self.graph.heap = Heap(self.graph.vertices, len(self.graph.vertices), key=lambda x: x.dist)
-
-        self.graph.heap.build_heap_inf(s)
-
-        self.reverse_graph.heap = Heap(self.reverse_graph.vertices, len(self.reverse_graph.vertices), key=lambda x: x.dist)
-
-        self.reverse_graph.heap.build_heap_inf(t)
-
-
+        # heapq.heapify(self.graph.heap)
+        # heapq.heapify(self.reverse_graph.heap)
         # print([(v.index+1, v.dist) for v in self.graph.vertices])
         # print([(v.index+1, v.dist) for v in self.reverse_graph.vertices])
         
@@ -284,6 +165,10 @@ class BiDijkstra():
             if curr_dist < best_dist:
                 best_dist = curr_dist
                 best_u = u
+
+        
+        
+
         return best_dist    
             
 
@@ -343,20 +228,28 @@ if __name__ == '__main__':
 
     n, m = readl()
 
+    vertices = [Vertex(i) for i in range(n)]
+    r_vertices = [Vertex(i) for i in range(n)]
 
     edges = []
     r_edges = []
 
+    adj = defaultdict(list)
+    r_adj = defaultdict(list)
+
     for edge in range(m):
         u, v, w = readl()
+
         edges.append(((u, v), w))
         r_edges.append(((v, u), w))
 
-
+        adj[vertices[u-1]].append((vertices[v-1], w))
+        r_adj[r_vertices[v-1]].append((r_vertices[u-1], w))
+    
     num_queries, = readl()
 
-    graph = Graph(n, edges)
-    reverse_graph = Graph(n, r_edges)
+    graph = Graph(vertices, edges, adj)
+    reverse_graph = Graph(r_vertices, r_edges, r_adj)
 
     
     biDij = BiDijkstra(graph, reverse_graph)
