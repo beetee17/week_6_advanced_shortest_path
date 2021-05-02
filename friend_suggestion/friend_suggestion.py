@@ -6,9 +6,6 @@ from queue import Queue
 import math
 import heapq
 
-def swap(arr, i, j):
-    arr[i], arr[j] = arr[j], arr[i]
-    return arr
 
 class Vertex():
     def __init__(self, index, dist=math.inf):
@@ -20,17 +17,15 @@ class Vertex():
         # for computing layer of vertex in tree and retracing shortest path  
         self.prev = None
 
+
     def __lt__(self, other):
         return self.dist < other.dist
 
-    def reset(self):
-        self.__init__(self.index)
-
 
 class Graph():
-    def __init__(self, vertices, edges, adj):
+    def __init__(self, edges, adj):
         
-        self.vertices = vertices
+        self.vertices = {}
 
         self.edges = edges
 
@@ -38,15 +33,21 @@ class Graph():
 
         self.last_processed = None
 
-        self.known_region = []
-
         self.search_fin = False
 
-        self.heap = self.vertices[:]
+        self.heap = None
         
 
-    def reset(self):
-        return self.__init__(self.vertices, self.edges, self.adj)
+    def reset(self, s):
+
+        self.vertices = {}
+        self.vertices[s] = 0
+      
+        self.heap = [Vertex(s, dist=0)]
+      
+        self.last_processed = None
+
+        self.search_fin = False
 
 
 
@@ -55,27 +56,28 @@ class Graph():
         # use a binary min heap as priority queue for constant time extraction of min dist vertex
 
         # stop iterating once all vertices are of known distances
-        if len(self.known_region) < len(self.vertices):
+
+
+        if len(self.heap) > 0:
 
             u = heapq.heappop(self.heap)
+
+            if u.dist != self.vertices.get(u.index, math.inf):
+                return
+            
+            u = u.index
         
             self.last_processed = u
 
-            if not u in self.known_region:
-                self.known_region.append(u)
 
             for (v, w) in self.adj[u]:
+                
+                if self.vertices.get(v, math.inf) > self.vertices.get(u, math.inf) + w:
 
-                if v.dist > u.dist + w and not v in self.known_region:
+                    self.vertices[v] = self.vertices.get(u, math.inf) + w
 
-                    v.dist = u.dist + w
+                    heapq.heappush(self.heap, Vertex(v, dist=self.vertices[v]))
 
-                    # for backtracing of shortest path
-                    v.prev = u
-
-                    heapq.heappush(self.heap, v)
-
-                    heapq.heapify(self.heap)
         else:
 
             self.search_fin = True
@@ -87,30 +89,11 @@ class BiDijkstra():
         self.graph = graph
         self.reverse_graph = reverse_graph
 
+
     def reset(self, s, t):
         
-
-        self.graph.reset()
-        self.reverse_graph.reset()
-
-        # self.graph.vertices[s].dist = 0
-        # self.reverse_graph.vertices[t].dist = 0
-
-        for v in self.graph.vertices:
-            if v.index == s:
-                v.dist = 0
-            else:
-                v.dist = math.inf
-
-        for v in self.reverse_graph.vertices:
-            if v.index == t:
-                v.dist = 0
-            else:
-                v.dist = math.inf
-
-        self.graph.heap = swap(self.graph.heap, s, 0)
-        self.reverse_graph.heap = swap(self.reverse_graph.heap, t, 0)
-
+        self.graph.reset(s)
+        self.reverse_graph.reset(t)
 
 
     def get_shortest_path(self, s, t):
@@ -121,58 +104,62 @@ class BiDijkstra():
         
         self.reset(s, t)
 
-        # heapq.heapify(self.graph.heap)
-        # heapq.heapify(self.reverse_graph.heap)
-        # print([(v.index+1, v.dist) for v in self.graph.vertices])
-        # print([(v.index+1, v.dist) for v in self.reverse_graph.vertices])
-        
         self.graph.dijkstra()
         self.reverse_graph.dijkstra()
 
-        # print(self.graph.last_processed.index+1, self.reverse_graph.last_processed.index+1)
 
-        while self.graph.last_processed.index != self.reverse_graph.last_processed.index:
+        while self.graph.last_processed != self.reverse_graph.last_processed:
 
-            # print(self.graph.last_processed.index+1, self.reverse_graph.last_processed.index+1)
-            # print([(v.index+1, v.dist) for v in self.graph.vertices])
-            # print([(v.index+1, v.dist) for v in self.reverse_graph.vertices])
-
-            # print(self.graph.search_fin, self.reverse_graph.search_fin)
 
             if self.graph.search_fin and self.reverse_graph.search_fin:
+    
                 return math.inf
 
             self.graph.dijkstra()
 
+            if self.graph.last_processed == self.reverse_graph.last_processed:
+                break
+
             self.reverse_graph.dijkstra()
 
-            if self.graph.last_processed.index == t:
-                # print('reach target')
-                return self.graph.last_processed.dist 
+            if self.graph.last_processed == t:
+              
+                return self.graph.vertices[t] 
             
-            if self.reverse_graph.last_processed.index == s:
-                # print('reach source')
-                return self.reverse_graph.last_processed.dist 
-            
+            if self.reverse_graph.last_processed == s:
+       
+                return self.reverse_graph.vertices[s] 
 
-        known_region = [u for u in self.graph.known_region if not math.isinf(self.reverse_graph.vertices[u.index].dist)] 
 
-        best_dist = self.graph.last_processed.dist + self.reverse_graph.last_processed.dist
+        best_dist = self.graph.vertices[self.graph.last_processed] + self.reverse_graph.vertices[self.reverse_graph.last_processed]
         best_u = self.graph.last_processed
 
-        for u in known_region:
-            curr_dist = self.graph.vertices[u.index].dist + self.reverse_graph.vertices[u.index].dist
+        for u in self.graph.vertices.keys():
+
+            curr_dist = self.graph.vertices.get(u, math.inf) + self.reverse_graph.vertices.get(u, math.inf)
+
             if curr_dist < best_dist:
+
                 best_dist = curr_dist
                 best_u = u
 
+            del self.reverse_graph.vertices[u]
         
-        
+        if self.reverse_graph.vertices:
+
+            for u in self.reverse_graph.vertices.keys():
+
+                curr_dist = self.graph.vertices.get(u, math.inf) + self.reverse_graph.vertices.get(u, math.inf)
+
+                if curr_dist < best_dist:
+                    best_dist = curr_dist
+                    best_u = u
+
 
         return best_dist    
             
 
-        # return self.graph.last_processed.dist + self.reverse_graph.last_processed.dist
+
 
 # 5 20
 # 1 2 667
@@ -228,8 +215,6 @@ if __name__ == '__main__':
 
     n, m = readl()
 
-    vertices = [Vertex(i) for i in range(n)]
-    r_vertices = [Vertex(i) for i in range(n)]
 
     edges = []
     r_edges = []
@@ -243,27 +228,75 @@ if __name__ == '__main__':
         edges.append(((u, v), w))
         r_edges.append(((v, u), w))
 
-        adj[vertices[u-1]].append((vertices[v-1], w))
-        r_adj[r_vertices[v-1]].append((r_vertices[u-1], w))
+        adj[u].append((v, w))
+        r_adj[v].append((u, w))
     
     num_queries, = readl()
 
-    graph = Graph(vertices, edges, adj)
-    reverse_graph = Graph(r_vertices, r_edges, r_adj)
+
+    graph = Graph(edges, adj)
+    reverse_graph = Graph(r_edges, r_adj)
 
     
     biDij = BiDijkstra(graph, reverse_graph)
 
     for i in range(num_queries):
         s, t = readl()
-        s -= 1
-        t -= 1
+
 
         dist = biDij.get_shortest_path(s, t) 
 
         ans = dist if not math.isinf(dist) else -1
 
         print(ans)
+
+### STRESS TEST ###
+    # import random
+
+    # n = 10000
+    # m = 1000000000
+
+    # edges = []
+    # r_edges = []
+
+    # adj = defaultdict(list)
+    # r_adj = defaultdict(list)
+
+    # for edge in range(m):
+    #     u = random.randint(0, n)
+    #     v = random.randint(0, n)
+    #     while v == u:
+    #         print(v)
+    #         v = random.randint(0, n)
+    #     w = 1
+
+    #     edges.append(((u, v), w))
+    #     r_edges.append(((v, u), w))
+
+    #     adj[u].append((v, w))
+    #     r_adj[v].append((u, w))
+    
+
+    # num_queries = random.randint(1, 10)
+
+    # graph = Graph(edges, adj)
+    # reverse_graph = Graph(r_edges, r_adj)
+
+    
+    # biDij = BiDijkstra(graph, reverse_graph)
+
+    # for i in range(num_queries):
+
+    #     s = random.randint(0, n)
+    #     t = random.randint(0, n)
+
+    #     print(n, m, s, t)
+
+    #     dist = biDij.get_shortest_path(s, t) 
+
+    #     ans = dist if not math.isinf(dist) else -1
+
+    #     print(ans)
 
 
     
