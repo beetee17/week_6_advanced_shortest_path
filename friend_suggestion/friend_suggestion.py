@@ -115,8 +115,6 @@ class BiDijkstra():
             if self.graph.search_fin and self.reverse_graph.search_fin:
                 break
 
-            
-
             self.graph.dijkstra()
 
             self.reverse_graph.dijkstra()
@@ -137,9 +135,9 @@ class BiDijkstra():
         best_dist = self.graph.vertices[self.graph.last_processed] + self.reverse_graph.vertices[self.reverse_graph.last_processed]
         best_u = self.graph.last_processed
 
-        for u in self.graph.vertices.keys():
+        for u, dist in self.graph.vertices.items():
 
-            curr_dist = self.graph.vertices[u] + self.reverse_graph.vertices.get(u, math.inf)
+            curr_dist = dist + self.reverse_graph.vertices.get(u, math.inf)
 
             if curr_dist < best_dist:
 
@@ -154,9 +152,9 @@ class BiDijkstra():
         
         if self.reverse_graph.vertices:
 
-            for u in self.reverse_graph.vertices.keys():
+            for u, dist in self.reverse_graph.vertices.items():
 
-                curr_dist = self.graph.vertices.get(u, math.inf) + self.reverse_graph.vertices[u]
+                curr_dist = self.graph.vertices.get(u, math.inf) + dist
 
                 if curr_dist < best_dist:
                     best_dist = curr_dist
