@@ -123,7 +123,7 @@ class BiDijkstra():
                 if curr_dist < best_dist:
                     best_dist = curr_dist
                     best_u = u
-                    
+
         return best_dist
 
     def get_shortest_path(self, s, t):
@@ -217,8 +217,8 @@ if __name__ == '__main__':
 
     n, m = readl()
 
-    edges = []
-    r_edges = []
+    edges = list()
+    r_edges = list()
 
     adj = defaultdict(list)
     r_adj = defaultdict(list)
@@ -234,11 +234,7 @@ if __name__ == '__main__':
     
     num_queries, = readl()
 
-    graph = Graph(edges, adj)
-    reverse_graph = Graph(r_edges, r_adj)
-
-    
-    biDij = BiDijkstra(graph, reverse_graph)
+    biDij = BiDijkstra(Graph(edges, adj), Graph(r_edges, r_adj))
 
     for i in range(num_queries):
         s, t = readl()
