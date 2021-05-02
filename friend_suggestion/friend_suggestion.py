@@ -94,38 +94,6 @@ class BiDijkstra():
         self.graph.reset(s)
         self.reverse_graph.reset(t)
 
-    def get_best_dist(self):
-        
-        best_dist = self.graph.vertices[self.graph.last_processed] + self.reverse_graph.vertices[self.reverse_graph.last_processed]
-        best_u = self.graph.last_processed
-
-        for u in self.graph.vertices.keys():
-
-            curr_dist = self.graph.vertices[u] + self.reverse_graph.vertices.get(u, math.inf)
-
-            if curr_dist < best_dist:
-
-                best_dist = curr_dist
-                best_u = u
-
-            try:
-                del self.reverse_graph.vertices[u]
-
-            except KeyError:
-                pass
-        
-        if self.reverse_graph.vertices:
-
-            for u in self.reverse_graph.vertices.keys():
-
-                curr_dist = self.graph.vertices.get(u, math.inf) + self.reverse_graph.vertices[u]
-
-                if curr_dist < best_dist:
-                    best_dist = curr_dist
-                    best_u = u
-
-        return best_dist
-
     def get_shortest_path(self, s, t):
         """Given the index of a source vertex, compute the shortest path lengths of all vertices reachable from the source"""
 
@@ -162,7 +130,41 @@ class BiDijkstra():
                 return self.reverse_graph.vertices[s] 
 
 
-        return self.get_best_dist()  
+        return self.get_best_dist()
+
+    def get_best_dist(self):
+        
+        best_dist = self.graph.vertices[self.graph.last_processed] + self.reverse_graph.vertices[self.reverse_graph.last_processed]
+        best_u = self.graph.last_processed
+
+        for u in self.graph.vertices.keys():
+
+            curr_dist = self.graph.vertices[u] + self.reverse_graph.vertices.get(u, math.inf)
+
+            if curr_dist < best_dist:
+
+                best_dist = curr_dist
+                best_u = u
+
+            try:
+                del self.reverse_graph.vertices[u]
+
+            except KeyError:
+                pass
+        
+        if self.reverse_graph.vertices:
+
+            for u in self.reverse_graph.vertices.keys():
+
+                curr_dist = self.graph.vertices.get(u, math.inf) + self.reverse_graph.vertices[u]
+
+                if curr_dist < best_dist:
+                    best_dist = curr_dist
+                    best_u = u
+
+        return best_dist
+
+      
             
 
 
