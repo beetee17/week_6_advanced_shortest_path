@@ -140,10 +140,14 @@ class BiDijkstra():
 
         while self.graph.last_processed != self.reverse_graph.last_processed:
 
-
             if self.graph.search_fin and self.reverse_graph.search_fin:
     
                 return math.inf
+            
+            if self.graph.search_fin and self.reverse_graph.search_fin:
+                break
+
+            
 
             self.graph.dijkstra()
 
