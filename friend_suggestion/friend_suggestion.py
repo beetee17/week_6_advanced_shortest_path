@@ -110,6 +110,7 @@ class BiDijkstra():
 
             try:
                 del self.reverse_graph.vertices[u]
+
             except KeyError:
                 pass
         
@@ -122,6 +123,7 @@ class BiDijkstra():
                 if curr_dist < best_dist:
                     best_dist = curr_dist
                     best_u = u
+                    
         return best_dist
 
     def get_shortest_path(self, s, t):
@@ -304,8 +306,6 @@ if __name__ == '__main__':
 
     #     q_end = time.time()
     #     print('query time {}'.format(q_end-q_start))
-        
-    #     print(ans)
         
     
     # end = time.time()
