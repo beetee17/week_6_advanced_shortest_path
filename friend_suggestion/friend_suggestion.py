@@ -14,10 +14,6 @@ class Vertex():
         # for computing of shortest path
         self.dist = dist
 
-        # for computing layer of vertex in tree and retracing shortest path  
-        self.prev = None
-
-
     def __lt__(self, other):
         return self.dist < other.dist
 
@@ -26,24 +22,17 @@ class Graph():
     def __init__(self, adj):
         
         self.vertices = {}
-
         self.adj = adj
-
-        self.last_processed = None
-
+        self.processed = set()
         self.search_fin = False
-
         self.heap = None
         
 
     def reset(self, s):
 
         self.vertices = {s : 0}
-      
         self.heap = [Vertex(s, dist=0)]
-      
-        self.last_processed = None
-
+        self.processed = set()
         self.search_fin = False
 
 
@@ -51,118 +40,90 @@ class Graph():
 
         # use a binary min heap as priority queue for constant time extraction of min dist vertex
 
-        if len(self.heap) > 0:
-
+        if len(self.heap) > 0: 
+            
             u = heapq.heappop(self.heap)
 
-            if u.dist != self.vertices.get(u.index, math.inf):
-                return
+            if u.dist == self.vertices.get(u.index, math.inf): return u
         
-            self.last_processed = u.index
+        else: self.search_fin = True
+
         
-        else:
-
-            self.search_fin = True
-
-            return None
-        
-        return u
-    
-    def process(self):
-
-        # stop iterating once all vertices are of known distances
-
-        u = self.last_processed
-
-        for (v, w) in self.adj[u]:
-                
-            if self.vertices.get(v, math.inf) > self.vertices.get(u, math.inf) + w:
-
-                self.vertices[v] = self.vertices[u] + w
-
-                heapq.heappush(self.heap, Vertex(v, dist=self.vertices[v]))
-  
 class BiDijkstra():
 
     def __init__(self, graph, reverse_graph):
         self.graph = graph
         self.reverse_graph = reverse_graph
+        self.min_dist = math.inf
 
 
     def reset(self, s, t):
         
         self.graph.reset(s)
         self.reverse_graph.reset(t)
+        self.min_dist = math.inf
 
-    def get_best_distance(self, u, direction):
+    def process(self, u, s, t, direction):
+
+        if not u: return None
 
         if direction == 'forward':
+
+            if u.index == t: return u.dist
             
-            min_dist = u.dist + self.reverse_graph.vertices[u]
-
-            for (v, w) in self.graph.adj[u]:
-
-                curr_dist = u.dist + w + self.reverse_graph.vertices.get(v, math.inf)
-                
-                if curr_dist < min_dist:
-
-                    min_dist = curr_dist
-            
+            graph = self.graph
+            reverse_graph = self.reverse_graph
+        
         else:
 
-            min_dist = u.dist + self.graph.vertices[u]
+            if u.index == s: return u.dist 
 
-            for (v, w) in self.reverse_graph.adj[u]:
+            graph = self.reverse_graph
+            reverse_graph = self.graph
 
-                curr_dist = u.dist + w + self.graph.vertices.get(v, math.inf)
-                
-                if curr_dist < min_dist:
+        graph.processed.add(u.index)
 
-                    min_dist = curr_dist
+        for (v, w) in graph.adj[u.index]:
+    
+            if graph.vertices.get(v, math.inf) > graph.vertices.get(u.index, math.inf) + w:
+
+                graph.vertices[v] = graph.vertices[u.index] + w
+
+                heapq.heappush(graph.heap, Vertex(v, dist=graph.vertices[v]))
+
+            # In addition to relaxing edges outgoing from u,
+            # we must maintain the length of the best path seen so far in min_dist
+            # initially, min_dist = ∞;
+            # when scanning an edge/arc (u, v) with weight, w, in the forward search and v is scanned in
+            # the reverse search, update min_dist if forward_dist(u) + w + reverse_dist(v) < µ.
+            # similar procedure if scanning an arc in the reverse search.
             
-        return min_dist
-                    
+            if v in reverse_graph.processed:
+
+                self.min_dist = min(self.min_dist, u.dist + w + reverse_graph.vertices[v])
 
     def get_shortest_path(self, s, t):
         """Given the index of a source vertex, compute the shortest path lengths of all vertices reachable from the source"""
 
-        if s == t:
-            return 0
+        if s == t: return 0
         
         self.reset(s, t)
 
-        u_forward = -1
-        u_reverse = -1 
-
         while True:
 
-            if self.graph.search_fin and self.reverse_graph.search_fin:
-    
-                return math.inf
+            if self.graph.search_fin and self.reverse_graph.search_fin: return math.inf
 
             u_forward = self.graph.get_next_vertex()
-
-            if u_forward and u_forward == u_reverse:
-
-                return self.get_best_distance(u_forward, direction = 'forward')
-            
-            self.graph.process()
-
             u_reverse = self.reverse_graph.get_next_vertex()
-
-            if u_forward and u_forward == u_reverse:
-
-                return self.get_best_distance(u_reverse, direction = 'reverse')
-
-            self.reverse_graph.process()
-
-            if self.graph.last_processed == t:
-              
-                return self.graph.vertices[t] 
             
-            if self.reverse_graph.last_processed == s:
-       
-                return self.reverse_graph.vertices[s] 
+            # see https://www.cs.princeton.edu/courses/archive/spr06/cos423/Handouts/EPP%20shortest%20path%20algorithms.pdf 
+            # for explanation of stopping criterion
+            if u_forward and u_reverse and u_forward.dist + u_reverse.dist >= self.min_dist: return self.min_dist
+
+            self.process(u_forward, s, t, direction = 'forward')
+            self.process(u_reverse, s, t, direction = 'reverse')
+
+            
 
 
 
@@ -226,8 +187,6 @@ if __name__ == '__main__':
 
     for edge in range(m):
         u, v, w = readl()
-
-
         adj[u].append((v, w))
         r_adj[v].append((u, w))
     
@@ -237,11 +196,9 @@ if __name__ == '__main__':
 
     for i in range(num_queries):
         s, t = readl()
-
         dist = biDij.get_shortest_path(s, t) 
 
         ans = dist if not math.isinf(dist) else -1
-
         print(ans)
 
 
