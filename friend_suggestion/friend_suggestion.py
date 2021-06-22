@@ -44,7 +44,7 @@ class Graph():
             
             u = heapq.heappop(self.heap)
 
-            if u.dist == self.vertices.get(u.index, math.inf): return u
+            if not u.index in self.processed: return u
         
         else: self.search_fin = True
 
